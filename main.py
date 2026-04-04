@@ -1,3 +1,5 @@
+import copy
+
 def sudokuValidator(state):
 
     rows = [set() for _ in range(9)]
@@ -54,6 +56,38 @@ def sudokuSolution(state):
 
     return True
 
+def possibleValues(state):
+    possibleValues = {}
+    for i in range(9):
+        for j in range(9):
+            if state[i][j] == 0:
+                possibleValues[i][j] = []
+
+    for i in range(9):
+        for j in range(9):
+            for k in range(1, 10):
+                if state[i][j] == 0:
+                    savedState = copy.deepcopy(state)
+                    savedState[i][j] = k
+                    if sudokuValidator(savedState):
+                        possibleValues[i][j].append(k)
+
+    return possibleValues
+
+def forwardSelection(state):
+
+    while not sudokuSolution(state):
+        values = possibleValues(state)
+        for i, j, value in values.items():
+            savedState = copy.deepcopy(state)
+            savedState[i][j] = value
+            newValues = possibleValues(savedState)
+            if [] not in newValues:
+                state = copy.deepcopy(savedState)
+                break
+
+    return state
+
 if __name__ == '__main__':
     mat = [
         [9, 3, 0, 0, 7, 0, 0, 0, 0],
@@ -67,4 +101,4 @@ if __name__ == '__main__':
         [0, 0, 0, 0, 8, 0, 0, 7, 9]
     ]
 
-    print(sudokuValidator(mat))
+    print(possibleValues(mat))
