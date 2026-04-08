@@ -1,3 +1,4 @@
+import random
 import copy
 import time
 
@@ -203,29 +204,30 @@ def benchmark(filename):
         for name, _ in solvers
     }
 
-    puzzleCount = 0
-
     with open(filename, 'r') as f:
-        for line in f:
-            parts = line.strip().split()
-            puzzleStr = parts[1]
+        allLines = [line for line in f if line.strip()]
 
-            state = parsePuzzle(puzzleStr)
-            puzzleCount += 1
+    sampledLines = random.sample(allLines, min(1000, len(allLines)))
+    puzzleCount = len(sampledLines)
 
-            for name, solver in solvers:
-                stats = {'nodes': 0, 'backtracks': 0}
-                stateCopy = copy.deepcopy(state)
+    for line in sampledLines:
+        parts = line.strip().split()
+        puzzleStr = parts[1]
+        state = parsePuzzle(puzzleStr)
 
-                start = time.perf_counter()
-                result = solver(stateCopy, stats)
-                end = time.perf_counter()
+        for name, solver in solvers:
+            stats = {'nodes': 0, 'backtracks': 0}
+            stateCopy = copy.deepcopy(state)
 
-                totals[name]['time'] += (end - start) * 1000
-                totals[name]['nodes'] += stats['nodes']
-                totals[name]['backtracks'] += stats['backtracks']
-                if result is not None:
-                    totals[name]['solved'] += 1
+            start = time.perf_counter()
+            result = solver(stateCopy, stats)
+            end = time.perf_counter()
+
+            totals[name]['time'] += (end - start) * 1000
+            totals[name]['nodes'] += stats['nodes']
+            totals[name]['backtracks'] += stats['backtracks']
+            if result is not None:
+                totals[name]['solved'] += 1
 
     print(f"\n{'Solver':<22} {'Avg Time (ms)':>15} {'Avg Nodes':>12} {'Avg Backtracks':>18} {'Solved %':>10}")
     print('-' * 80)
