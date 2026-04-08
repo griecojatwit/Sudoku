@@ -208,12 +208,13 @@ def benchmark(filename):
         allLines = [line for line in f if line.strip()]
 
     sampledLines = random.sample(allLines, min(1000, len(allLines)))
-    puzzleCount = len(sampledLines)
+    puzzleCount = 0
 
     for line in sampledLines:
         parts = line.strip().split()
         puzzleStr = parts[1]
         state = parsePuzzle(puzzleStr)
+        puzzleCount += 1
 
         for name, solver in solvers:
             stats = {'nodes': 0, 'backtracks': 0}
@@ -223,13 +224,15 @@ def benchmark(filename):
             result = solver(stateCopy, stats)
             end = time.perf_counter()
 
-            totals[name]['time'] += (end - start) * 1000
+            totals[name]['time'] += (end - start)
             totals[name]['nodes'] += stats['nodes']
             totals[name]['backtracks'] += stats['backtracks']
             if result is not None:
                 totals[name]['solved'] += 1
+            print(f"{name}: {end-start:0.2f}")
+        print(f"Puzzle {puzzleCount} solved.")
 
-    print(f"\n{'Solver':<22} {'Avg Time (ms)':>15} {'Avg Nodes':>12} {'Avg Backtracks':>18} {'Solved %':>10}")
+    print(f"\n{'Solver':<22} {'Avg Time (s)':>15} {'Avg Nodes':>12} {'Avg Backtracks':>18} {'Solved %':>10}")
     print('-' * 80)
 
     for name in totals:
