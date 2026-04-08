@@ -1,5 +1,4 @@
 import random
-import copy
 import time
 
 def sudokuValidator(state):
@@ -62,16 +61,12 @@ def possibleValues(state):
         for j in range(9):
             if state[i][j] == 0:
                 possible[(i, j)] = []
-
-    for i in range(9):
-        for j in range(9):
-            for k in range(1, 10):
-                if state[i][j] == 0:
-                    savedState = copy.deepcopy(state)
-                    savedState[i][j] = k
-                    if sudokuValidator(savedState):
+                original = state[i][j]
+                for k in range(1, 10):
+                    state[i][j] = k
+                    if sudokuValidator(state):
                         possible[(i, j)].append(k)
-
+                state[i][j] = original
     return possible
 
 def possibleNeighbors(state, neighbors):
@@ -80,10 +75,10 @@ def possibleNeighbors(state, neighbors):
         if state[i][j] == 0:
             possible[(i, j)] = []
             for k in range(1, 10):
-                savedState = copy.deepcopy(state)
-                savedState[i][j] = k
-                if sudokuValidator(savedState):
+                state[i][j] = k
+                if sudokuValidator(state):
                     possible[(i, j)].append(k)
+            state[i][j] = 0
     return possible
 
 def getNeighbors(i, j):
@@ -111,7 +106,7 @@ def findMRV(values):
 
 def forwardSelection(state, stats):
     if sudokuSolution(state):
-        return state
+        return True
 
     values = possibleValues(state)
 
@@ -121,16 +116,17 @@ def forwardSelection(state, stats):
     for (i, j), candidates in values.items():
         stats['nodes'] += 1
         for val in candidates:
-            savedState = copy.deepcopy(state)
-            savedState[i][j] = val
+            state[i][j] = val
 
             neighbors = getNeighbors(i, j)
-            newValues = possibleNeighbors(savedState, neighbors)
+            newValues = possibleNeighbors(state, neighbors)
 
             if not any(v == [] for v in newValues.values()):
-                result = forwardSelection(savedState, stats)
+                result = forwardSelection(state, stats)
                 if result is not None:
-                    return result
+                    return True
+
+            state[i][j] = 0  # undo
             stats['backtracks'] += 1
         break
 
@@ -138,29 +134,27 @@ def forwardSelection(state, stats):
 
 def backwardSelection(state, stats):
     if sudokuSolution(state):
-        return state
+        return True
 
     for i in range(9):
         for j in range(9):
             if state[i][j] == 0:
                 stats['nodes'] += 1
                 for val in range(1, 10):
-                    savedState = copy.deepcopy(state)
-                    savedState[i][j] = val
-
-                    if sudokuValidator(savedState):
-                        result = backwardSelection(savedState, stats)
-                        if result is not None:
-                            return result
+                    state[i][j] = val
+                    if sudokuValidator(state):
+                        if backwardSelection(state, stats):
+                            return True
                         stats['backtracks'] += 1
 
+                state[i][j] = 0
                 return None
 
     return None
 
 def minimumSelection(state, stats):
     if sudokuSolution(state):
-        return state
+        return True
 
     values = possibleValues(state)
 
@@ -171,16 +165,17 @@ def minimumSelection(state, stats):
     stats['nodes'] += 1
 
     for val in values[(i, j)]:
-        savedState = copy.deepcopy(state)
-        savedState[i][j] = val
+        state[i][j] = val
 
         neighbors = getNeighbors(i, j)
-        newValues = possibleNeighbors(savedState, neighbors)
+        newValues = possibleNeighbors(state, neighbors)
 
         if not any(v == [] for v in newValues.values()):
-            result = forwardSelection(savedState, stats)
+            result = minimumSelection(state, stats)
             if result is not None:
-                return result
+                return True
+
+        state[i][j] = 0
         stats['backtracks'] += 1
 
     return None
@@ -213,21 +208,20 @@ def benchmark(filename):
     for line in sampledLines:
         parts = line.strip().split()
         puzzleStr = parts[1]
-        state = parsePuzzle(puzzleStr)
         puzzleCount += 1
 
         for name, solver in solvers:
             stats = {'nodes': 0, 'backtracks': 0}
-            stateCopy = copy.deepcopy(state)
+            state = parsePuzzle(puzzleStr)
 
             start = time.perf_counter()
-            result = solver(stateCopy, stats)
+            result = solver(state, stats)
             end = time.perf_counter()
 
             totals[name]['time'] += (end - start)
             totals[name]['nodes'] += stats['nodes']
             totals[name]['backtracks'] += stats['backtracks']
-            if result is not None:
+            if result is True:
                 totals[name]['solved'] += 1
             print(f"{name}: {end-start:0.2f}")
         print(f"Puzzle {puzzleCount} solved.")
